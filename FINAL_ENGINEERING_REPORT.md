@@ -1,7 +1,5 @@
 # Final engineering report — OpsFlow
 
-*Newtonite Software Engineering Challenge — "Operations Under Pressure". Report date: 2026-09-29, updated 2026-09-30 after the identity & access iteration.*
-Every result below was produced by actually running the code; nothing is projected.
 
 ## 1. Executive summary
 
