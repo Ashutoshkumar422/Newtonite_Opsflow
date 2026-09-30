@@ -29,7 +29,7 @@ natively), no cloud deployment, no CI, no MFA inside OpsFlow (delegated to the I
 Replace chat/spreadsheet coordination with a system of record where each request has one owner, a
 trustworthy state, an explicit workflow with approval, and an explainable history — and where
 simultaneous or repeated actions cannot corrupt that record. Actors, invariants I1–I9 and critical
-scenarios A–F are formalised in [`PROBLEM_FORMULATION.md`](PROBLEM_FORMULATION.md).
+scenarios A–F are formalised in .
 
 ## 3. Requirements analysis
 
@@ -44,14 +44,14 @@ PROBLEM_FORMULATION §2.5.
 
 Modular monolith (FastAPI) with layers api → services → domain/policy → models, plus a separate
 outbox worker process; React SPA served same-origin behind nginx. One transaction per request.
-Details: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+Details.
 
 ## 5. Technology stack and justification
 
 Python 3.11 · FastAPI · Pydantic 2 · SQLAlchemy 2 · Alembic · PostgreSQL 16 (pg_trgm, FTS) ·
 React 19 · TypeScript 6 (strict) · Vite 8 · Tailwind 4 · TanStack Query 5 · React Router 7 ·
 pytest · Vitest · Playwright · Docker Compose · nginx. Each choice is compared with alternatives in
-[`TECH_STACK_COMPARISON.md`](TECH_STACK_COMPARISON.md); the deciding factor throughout was
+ the deciding factor throughout was
 PostgreSQL's locking, constraint and search features, which make the critical behaviours simple
 and verifiable.
 
@@ -62,14 +62,14 @@ Twelve tables (nine for work management, three for identity: `sessions`, `auth_t
 numbers, domain CHECKs), an append-only trigger on `activities`, unique keys that make duplicates
 impossible (idempotency, notifications), 19 secondary indexes aligned with the actual queries (keyset sort
 orders, GIN for FTS/trigram, partial indexes for overdue and pending outbox). No hard deletes.
-Details and the lock-by-lock correctness table: [`DATABASE_DESIGN.md`](DATABASE_DESIGN.md).
+Details and the lock-by-lock correctness table.
 
 ## 7. API design
 
 41 REST operations under `/api/v1` with OpenAPI docs at `/api/docs`, one error envelope with
 stable codes and request IDs, cursor pagination, `version` for optimistic concurrency,
 `Idempotency-Key` on the five side-effecting POSTs, and an advisory `permissions` object on items.
-Details: [`API_DOCUMENTATION.md`](API_DOCUMENTATION.md).
+Details.
 
 ## 8. Authentication and authorization
 
@@ -122,7 +122,7 @@ both with barrier-released thread races and with deterministic two-session inter
 
 Backend suite run repeatedly without flakes (≈42 s; bcrypt at cost 12 makes login tests slow on
 purpose). Full breakdown, test-to-risk
-mapping and gaps: [`TESTING_STRATEGY.md`](TESTING_STRATEGY.md).
+mapping and gaps.
 
 ## 12. Performance
 
