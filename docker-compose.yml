@@ -1,0 +1,85 @@
+# Local full-stack deployment: docker compose up --build   →   http://localhost:8080
+name: opsflow
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: opsflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opsflow}
+      POSTGRES_DB: opsflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opsflow -d opsflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    command: ["api"]
+    environment: &backend_env
+      OPSFLOW_ENV: ${OPSFLOW_ENV:-development}
+      OPSFLOW_DATABASE_URL: postgresql+psycopg://opsflow:${POSTGRES_PASSWORD:-opsflow}@db:5432/opsflow
+      OPSFLOW_JWT_SECRET: ${OPSFLOW_JWT_SECRET:-dev-only-insecure-secret-change-me}
+      OPSFLOW_COOKIE_SECURE: ${OPSFLOW_COOKIE_SECURE:-false}
+      OPSFLOW_CORS_ORIGINS: '["http://localhost:8080"]'
+      OPSFLOW_SEED_ON_START: ${OPSFLOW_SEED_ON_START:-true}
+      # Requests arrive through nginx, which appends the real client address to X-Forwarded-For
+      # (used for login rate limiting). The API port below is bound to localhost only.
+      OPSFLOW_TRUST_PROXY_HEADERS: "true"
+      # Single sign-on: empty = disabled. See .env.sso.example / `docker compose --profile sso`.
+      OPSFLOW_OIDC_ISSUER: ${OPSFLOW_OIDC_ISSUER:-}
+      OPSFLOW_OIDC_DISCOVERY_URL: ${OPSFLOW_OIDC_DISCOVERY_URL:-}
+      OPSFLOW_OIDC_CLIENT_ID: ${OPSFLOW_OIDC_CLIENT_ID:-}
+      OPSFLOW_OIDC_CLIENT_SECRET: ${OPSFLOW_OIDC_CLIENT_SECRET:-}
+      OPSFLOW_OIDC_REDIRECT_URI: ${OPSFLOW_OIDC_REDIRECT_URI:-http://localhost:8080/api/v1/auth/oidc/callback}
+      OPSFLOW_OIDC_PROVIDER_NAME: ${OPSFLOW_OIDC_PROVIDER_NAME:-Single sign-on}
+      OPSFLOW_OIDC_AUTO_PROVISION: ${OPSFLOW_OIDC_AUTO_PROVISION:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  worker:
+    build: ./backend
+    command: ["worker"]
+    environment: *backend_env
+    depends_on:
+      backend:
+        condition: service_healthy  # backend runs the migrations first
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+
+  # Development-only OpenID Connect provider for demonstrating SSO:
+  #   docker compose --env-file .env.sso.example --profile sso up --build
+  idp:
+    profiles: ["sso"]
+    build: ./backend
+    command: ["python", "-m", "app.devtools.dev_oidc_provider"]
+    environment:
+      DEV_OIDC_PUBLIC_URL: http://localhost:9000      # what the browser uses
+      DEV_OIDC_INTERNAL_URL: http://idp:9000          # what the backend uses
+      DEV_OIDC_CLIENT_ID: opsflow-dev
+      DEV_OIDC_CLIENT_SECRET: opsflow-dev-secret
+    ports:
+      - "9000:9000"
+
+volumes:
+  pgdata:
